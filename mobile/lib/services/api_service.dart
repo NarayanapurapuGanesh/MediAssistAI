@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 import '../models/user.dart';
 import '../models/medication.dart';
 import '../models/health.dart';
@@ -13,10 +14,8 @@ class AuthResponse {
 }
 
 class ApiService {
-  // Primary URL is localhost via ADB reverse (0ms USB speed). Fallback is Wi-Fi LAN IP.
-  static String activeBaseUrl = 'http://127.0.0.1:8000/api/v1';
-  static const String usbUrl = 'http://127.0.0.1:8000/api/v1';
-  static const String wifiUrl = 'http://192.168.1.6:8000/api/v1';
+  // Primary URL is now dynamic based on environment
+  static String activeBaseUrl = AppConfig.baseUrl;
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -38,17 +37,21 @@ class ApiService {
     'Content-Type': 'application/json',
   };
 
-  // Helper to execute request with automatic USB <-> Wi-Fi failover
+  // Helper to execute request with environment-aware failover and timeouts
   Future<http.Response> _requestWithFallback(
       Future<http.Response> Function(String base) requestFn) async {
+    final timeoutDuration = AppConfig.isProduction ? const Duration(seconds: 45) : const Duration(seconds: 5);
+    
     try {
-      return await requestFn(activeBaseUrl).timeout(const Duration(seconds: 3));
+      return await requestFn(activeBaseUrl).timeout(timeoutDuration);
     } catch (_) {
-      // Switch to alternative endpoint if primary failed
-      final alternativeUrl = (activeBaseUrl == usbUrl) ? wifiUrl : usbUrl;
+      if (AppConfig.isProduction) {
+        rethrow;
+      }
+      final alternativeUrl = (activeBaseUrl == AppConfig.baseUrl) ? AppConfig.fallbackUrl : AppConfig.baseUrl;
       try {
-        final resp = await requestFn(alternativeUrl).timeout(const Duration(seconds: 4));
-        activeBaseUrl = alternativeUrl; // Remember working endpoint
+        final resp = await requestFn(alternativeUrl).timeout(const Duration(seconds: 5));
+        activeBaseUrl = alternativeUrl;
         return resp;
       } catch (e) {
         rethrow;
@@ -88,7 +91,7 @@ class ApiService {
       return AuthResponse(
           success: false,
           errorMessage:
-              'Cannot reach server. Ensure backend is running.');
+              'Cannot reach server. Please ensure you are connected and the backend is running.');
     }
   }
 
@@ -122,7 +125,7 @@ class ApiService {
       return AuthResponse(
           success: false,
           errorMessage:
-              'Cannot reach server. Ensure backend is running.');
+              'Cannot reach server. Please ensure you are connected and the backend is running.');
     }
   }
 
