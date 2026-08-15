@@ -45,7 +45,7 @@ cd MediAssistAI
    ```bash
    cp .env.example .env
    ```
-   *Open `.env` and paste your actual **Gemini API Key** and a **Secret Key** for JWT.*
+   *Open `.env` and paste your actual **Gemini API Key** (get one from [Google AI Studio](https://aistudio.google.com/app/apikey)) and a **Secret Key** for JWT.*
 
 3. **Create a Virtual Environment:**
    ```bash
