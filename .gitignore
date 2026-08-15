@@ -1,0 +1,4 @@
+
+backend/venv/
+backend/mediassist.db
+backend/__pycache__/
